@@ -37,5 +37,8 @@ jobs:
       - name: Synth stack
         run: cdk synth
 
+      - name: bootstrap stack
+        run: cdk bootstrap
+        
       - name: Deploy stack
         run: cdk deploy --all --require-approval never
