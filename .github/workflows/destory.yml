@@ -1,0 +1,37 @@
+name: Destroy CDK Stack
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  destroy:
+    if: ${{ github.event.issue.pull_request.merged == true && github.event.comment.body contains 'destroy' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install AWS CDK
+        run: npm i -g aws-cdk
+
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE }}
+
+      - name: Destory stack
+        run: cdk destroy --force
