@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main # Only trigger when PR is raised against the main branch
-    types: [opened, synchronize, reopened]
-  issue_comment:
-    types: [created]
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -20,19 +17,14 @@ jobs:
       - name: Determine Action Based on Comment
         id: determine
         run: |
-          echo "GITHUB_EVENT_NAME: ${{ github.event_name }}"
-          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
-            COMMENT_BODY="${{ github.event.comment.body }}"
-            echo "COMMENT_BODY: $COMMENT_BODY"
-            if echo "$COMMENT_BODY" | grep -iq '\[destroy\]'; then
-              echo "action=destroy" >> $GITHUB_OUTPUT
-            elif echo "$COMMENT_BODY" | grep -iq '\[deploy\]'; then
-              echo "action=deploy" >> $GITHUB_OUTPUT
-            else
-              echo "action=none" >> $GITHUB_OUTPUT
-            fi
-          else
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          echo "COMMENT_BODY: $COMMENT_BODY"
+          if echo "$COMMENT_BODY" | grep -iq 'destroy'; then
+            echo "action=destroy" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -iq 'deploy'; then
             echo "action=deploy" >> $GITHUB_OUTPUT
+          else
+            echo "action=none" >> $GITHUB_OUTPUT  # No action if neither keyword is found
           fi
 
   aws-cdk-deploy:
