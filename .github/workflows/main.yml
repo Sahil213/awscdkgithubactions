@@ -24,17 +24,23 @@ jobs:
         with:
           node-version: "18.x"
 
-      - name: Install CDK dependencies
-        working-directory: ./
-        run: npm ci
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-          
-      - name: Deploy CDK stack
-        working-directory: ./
-        run: npx cdk deploy --require-approval never
+          aws-region: us-west-2
+
+      - name: install npm
+        run: 'sudo apy update -y && sudo apt install  nodejs npm -y'
+
+      - name: install AWS CDk
+        run: 'sudo npm install -g aws-cdk'
+
+      - name: CDK Synth
+        run: cdk synth
+        working-directory: .
+
+      - name: CDK Deploy
+        run: cdk deploy
+        working-directory: .
