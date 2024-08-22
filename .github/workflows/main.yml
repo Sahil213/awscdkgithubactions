@@ -8,7 +8,7 @@ permissions:
   id-token: write # This is required for requesting the JWT
   
 jobs:
-  aws_cdk:
+  aws_cdk_deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -42,6 +42,36 @@ jobs:
         
       - name: Deploy stack
         run: cdk deploy --all --require-approval never
+        
+  aws-cdk-destroy:
+    runs-on: ubuntu-latest
 
-      - name: Destroy stack
-        run: cdk destroy 
+    if: github.event.inputs.action == 'destroy'
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE }} # Optional, if using a role
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Destroy CDK Stack
+        run: cdk destroy --force
+      
