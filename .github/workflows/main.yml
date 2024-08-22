@@ -26,11 +26,12 @@ jobs:
         run: npm i -g aws-cdk
 
       - name: Configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
           aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ var.AWS_GITHUB_ROLE }}
 
       - name: Synth stack
         run: cdk synth
