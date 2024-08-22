@@ -1,46 +1,39 @@
-name: Deploy AWS CDK
+name: CDK Deploy
 
-# Controls when the action will run.
 on:
-  #push:
-    #branches:
-      #- master
-  #pull_request:
-  #branches: [ main ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+  push:
+    branches: ["main"]
 
 jobs:
-  deploy:
+  aws_cdk:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Set up Node JS
-        uses: actions/setup-node@v3
+      - name: Check out code
+        uses: actions/checkout@v2
         with:
-          node-version: "18.x"
+          fetch-depth: 2
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install AWS CDK
+        run: npm i -g aws-cdk
+
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@master
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: install npm
-        run: 'sudo apy update -y && sudo apt install  nodejs npm -y'
-
-      - name: install AWS CDk
-        run: 'sudo npm install -g aws-cdk'
-
-      - name: CDK Synth
+      - name: Synth stack
         run: cdk synth
-        working-directory: .
 
-      - name: CDK Deploy
-        run: cdk deploy
-        working-directory: .
+      - name: Deploy stack
+        run: cdk deploy --all --require-approval never
