@@ -1,14 +1,43 @@
 name: CDK Deploy
 
 on:
-  push:
-    branches: ["main"]
+  pull_request:
+    branches:
+      - main # Only trigger when PR is raised against the main branch
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
 
 permissions:
   id-token: write # This is required for requesting the JWT
-  
+
 jobs:
-  aws_cdk_deploy:
+  determine-action:
+    runs-on: ubuntu-latest
+    outputs:
+      action: ${{ steps.determine.outputs.action }}
+    steps:
+      - name: Determine Action Based on Comment
+        id: determine
+        run: |
+          echo "GITHUB_EVENT_NAME: ${{ github.event_name }}"
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            echo "COMMENT_BODY: $COMMENT_BODY"
+            if echo "$COMMENT_BODY" | grep -iq '\[destroy\]'; then
+              echo "action=destroy" >> $GITHUB_OUTPUT
+            elif echo "$COMMENT_BODY" | grep -iq '\[deploy\]'; then
+              echo "action=deploy" >> $GITHUB_OUTPUT
+            else
+              echo "action=none" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "action=deploy" >> $GITHUB_OUTPUT
+          fi
+
+  aws-cdk-deploy:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'deploy'
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -39,39 +68,38 @@ jobs:
 
       - name: bootstrap stack
         run: cdk bootstrap
-        
+
       - name: Deploy stack
         run: cdk deploy --all --require-approval never
-        
-  aws-cdk-destroy:
+
+  destroy:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'destroy'
     runs-on: ubuntu-latest
 
-    if: github.event.inputs.action == 'destroy'
-
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install AWS CDK
+        run: npm i -g aws-cdk
 
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE }} # Optional, if using a role
+          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Install AWS CDK
-        run: npm install -g aws-cdk
-
-      - name: Destroy CDK Stack
+      - name: Destory stack
         run: cdk destroy --force
-      
